@@ -1,38 +1,43 @@
+import os
 import re
 import translators as ts
 
-def translate_comments(input_file, output_file, error_log):
-    with open(input_file, 'r', encoding='GBK') as file:
-        c_code = file.read()
+def is_english(text):
+    return all(ord(char) < 128 for char in text)
 
-    comments = re.findall(r'/\*.*?\*/|//.*?(?=\n|$)', c_code, re.DOTALL)
+def translate_comments(input_file, error_log):
+    try:
+        with open(input_file, 'r', encoding='GBK', errors='ignore') as file:
+            lines = file.readlines()
 
-    # Translate each comment
-    translated_comments = []
-    for comment in comments:
-        try:
-            translated_comment = ts.google(comment)
-            if translated_comment:
-                translated_comments.append(translated_comment)
-            else:
-                error_log.write(f"Translation failed for comment: {comment}\n")
-        except Exception as e:
-            error_log.write(f"Error translating comment: {e}\n")
-            translated_comments.append(comment)  # Use the original comment if translation fails
+        # Translate each non-English comment in-place
+        for i, line in enumerate(lines):
+            comments = re.findall(r'/\*.*?\*/|//.*?(?=\n|$)', line, re.DOTALL)
+            for comment in comments:
+                if not is_english(comment):
+                    try:
+                        translated_comment = ts.google(comment)
+                        lines[i] = lines[i].replace(comment, translated_comment)
+                    except Exception as e:
+                        error_log.write(f"Error translating {input_file}, line {i + 1}: {str(e)}\n")
 
-    # Replace original comments with translated comments
-    translated_code = c_code
-    for original, translated in zip(comments, translated_comments):
-        translated_code = translated_code.replace(original, translated)
+        # Write the translated code back to the input file
+        with open(input_file, 'w', encoding='UTF-8') as file:
+            file.writelines(lines)
 
-    # Write the translated code to the output file
-    with open(output_file, 'w', encoding='UTF-8') as output_file:
-        output_file.write(translated_code)
+    except Exception as e:
+        error_log.write(f"Error processing {input_file}: {str(e)}\n")
+
+def translate_files_in_directory(directory):
+    error_log_path = os.path.join(directory, 'translation_errors.log')
+
+    with open(error_log_path, 'w', encoding='UTF-8') as error_log:
+        for filename in os.listdir(directory):
+            if filename.endswith(".h") or filename.endswith(".c"):
+                input_file_path = os.path.join(directory, filename)
+                translate_comments(input_file_path, error_log)
+                print(f"{filename} is now translated.")
 
 # Example usage
-input_file_path = r'D:\PedDrv.h'
-output_file_path = r'D:\MYPedDrv.h'
-error_log_path = r'D:\translation_errors.log'
-
-with open(error_log_path, 'w', encoding='UTF-8') as error_log:
-    translate_comments(input_file_path, output_file_path, error_log)
+directory_path = r'C:\Users\s.bazargan\Desktop\mh1902t\firmware_pos\src\app\ped'
+translate_files_in_directory(directory_path)
