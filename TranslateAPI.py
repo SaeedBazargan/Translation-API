@@ -45,7 +45,6 @@ def translate_files_in_directory(directory):
                     translate_comments(input_file_path, error_log)
                     print(f"{filename} is now translated.")
 
-
 # Example usage
-directory_path = r'D:\translated_M500\sp-m500-firmware\src'
+directory_path = r'D:\tttttt\firmware_pos\src\utils'
 translate_files_in_directory(directory_path)
